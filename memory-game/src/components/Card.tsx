@@ -33,7 +33,7 @@ const Card: React.FC<CardProps> = ({ card, onClick }) => {
             : 'bg-gradient-to-br from-green-500 to-green-600'}`}
         style={{ backfaceVisibility: "hidden" }}
       >
-        ?
+        Depu
       </div>
 
       {/* 卡片背面 */}

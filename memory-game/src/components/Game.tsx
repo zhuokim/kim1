@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getRandomWords } from '../data/words';
-import { Card as CardType, GameState } from '../types';
+import { Card as CardType, GameState, Score, GameData } from '../types';
 import Card from './Card';
 import Timer from './Timer';
+import GroupSelection from './GroupSelection';
 
-const PREVIEW_DURATION = 10; // Preview duration in seconds
+const PREVIEW_DURATION = 7; // Preview duration in seconds
+const STORAGE_KEY = 'memory-game-data';
 
 interface GameProps {
   group: number;
@@ -22,6 +24,29 @@ const Game: React.FC<GameProps> = ({ group, onComplete }) => {
 
   const [isPreview, setIsPreview] = useState(true);
   const [previewCountdown, setPreviewCountdown] = useState(PREVIEW_DURATION);
+
+  // 添加防截屏事件监听
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // 当用户切换到其他应用时（可能是为了截屏），重置游戏
+        initializeGame();
+      }
+    };
+
+    const handleFocus = () => {
+      // 当用户返回游戏时，重置游戏
+      initializeGame();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const initializeGame = () => {
     const selectedWords = getRandomWords(8);
@@ -123,18 +148,27 @@ const Game: React.FC<GameProps> = ({ group, onComplete }) => {
         const isGameComplete = matchedCards.every((card) => card.isMatched);
         const endTime = isGameComplete ? Date.now() : null;
 
+        // 先更新卡片状态，但不立即设置为 isMatched
         setGameState((prev) => ({
           ...prev,
-          cards: matchedCards,
+          cards: newCards,
           flippedCards: [],
-          isGameComplete,
-          endTime,
         }));
 
-        if (isGameComplete && endTime && gameState.startTime) {
-          const timeTaken = Math.floor((endTime - gameState.startTime) / 1000);
-          onComplete(timeTaken);
-        }
+        // 1秒后再设置为 isMatched
+        setTimeout(() => {
+          setGameState((prev) => ({
+            ...prev,
+            cards: matchedCards,
+            isGameComplete,
+            endTime,
+          }));
+
+          if (isGameComplete && endTime && gameState.startTime) {
+            const timeTaken = Math.floor((endTime - gameState.startTime) / 1000);
+            onComplete(timeTaken);
+          }
+        }, 1000);
       } else {
         setTimeout(() => {
           const resetCards = newCards.map((card) =>
@@ -154,7 +188,10 @@ const Game: React.FC<GameProps> = ({ group, onComplete }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 py-8">
+    <div 
+      className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 py-8"
+      onContextMenu={(e) => e.preventDefault()} // 禁用右键菜单
+    >
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
@@ -183,6 +220,12 @@ const Game: React.FC<GameProps> = ({ group, onComplete }) => {
               onClick={() => handleCardClick(card)}
             />
           ))}
+        </div>
+
+        <div className="mt-8 text-center text-gray-600">
+          <p className="text-sm">
+            Created by Kim | Contact: <a href="mailto:zhuo.jin@mail.polimi.it" className="text-blue-600 hover:text-blue-800">zhuo.jin@mail.polimi.it</a>
+          </p>
         </div>
       </div>
     </div>
